@@ -31,10 +31,23 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
+
+# screenshot tooling
+.puppeteer-profile*/
+.expo-test-bundle/
+
+# IDE
+.idea/
+.vscode/
+
+# Claude Code workspace
+.claude/
 
 # generated native folders
 /ios
