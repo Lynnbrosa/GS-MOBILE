@@ -191,6 +191,8 @@ async function main() {
     await captureEventsDark();
   } else if (process.argv.includes('--apod-light')) {
     await captureApodLight();
+  } else if (process.argv.includes('--apod-dark')) {
+    await captureApodDark();
   } else {
     console.log('--- Capturing auth screens (dark) ---');
     await captureAuthScreens('dark');
@@ -200,6 +202,55 @@ async function main() {
     await captureExtrasDetailDark();
   }
   console.log('done');
+}
+
+async function captureApodDark() {
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--force-color-profile=srgb',
+      '--disable-web-security',
+      `--user-data-dir=${path.join(ROOT, '.puppeteer-profile-apod-dark')}`,
+    ],
+  });
+  const page = await browser.newPage();
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+  await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await page.goto(URL, { waitUntil: 'networkidle2', timeout: 60000 });
+  await waitRoot(page);
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'networkidle2' });
+  await waitRoot(page);
+
+  await clickByText(page, 'Cadastre-se');
+  await sleep(1500);
+  const email = `apod-dark-${Date.now()}@orbittapi.dev`;
+  await fillByPlaceholder(page, 'Seu nome', 'Operador Demo');
+  await fillByPlaceholder(page, 'voce@exemplo.com', email);
+  await fillByPlaceholder(page, 'Mínimo 8 caracteres', 'SenhaForte123');
+  await fillByPlaceholder(page, 'Repita a senha', 'SenhaForte123');
+  await sleep(300);
+  await clickByText(page, 'Criar conta');
+  await page.waitForFunction(
+    () => Array.from(document.querySelectorAll('*')).some((el) => el.textContent?.trim() === 'Início'),
+    { timeout: 30000 },
+  );
+  await sleep(2500);
+
+  await clickByText(page, 'NASA · Foto do dia');
+  // Wait until the APOD image actually loads (not the skeleton)
+  await page.waitForFunction(
+    () => {
+      const imgs = Array.from(document.querySelectorAll('img'));
+      return imgs.some((img) => img.complete && img.naturalWidth > 100 && img.src.includes('apod.nasa.gov'));
+    },
+    { timeout: 30000 },
+  );
+  await sleep(1500);
+  await shot(page, 'apod-dark');
+  await browser.close();
 }
 
 async function captureApodLight() {
